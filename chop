@@ -1,14 +1,21 @@
 #!/usr/bin/python
 import Image
-import os;
+import ImageStat
+import os
+import sys
+import argparse
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
 
 class Chop:
 	def __init__(self, mask_file_name, artwork_file_name, out_folder, silent):
 		self.silent = silent
+		self.out_folder = out_folder
 
-		if mask_file_name and os.path.exists(mask_file):
+		if mask_file_name and os.path.exists(mask_file_name):
 			self.debug('Reading mask')
-			mask = Image.open(mask_file)
+			mask = Image.open(mask_file_name).convert('RGB')
 		else:
 			print("Please specify the mask")
 			sys.exit(2)
@@ -20,9 +27,38 @@ class Chop:
 			print("Please specify the artwork")
 			sys.exit(2)
 
+		# validating images size
 		self.debug("Analysing the images")
-		mask_stats = ImageStat.stat(mask)
-		self.debug(mask_stats)
+		mask_size = mask.size
+		artwork_size = artwork.size
+		delta = (float(artwork_size[0])/float(mask_size[0]),float(artwork_size[1])/float(mask_size[1]))
+		if delta[0] != int(delta[0]) or delta[1] != int(delta[1]):
+			print("The artwork size must be an integer multiple of the mask size")
+			sys.exit(2)
+
+		if not os.path.exists(out_folder):
+			os.mkdir(out_folder,0755)
+		'''else:
+			print("The folder \"%s\" already exists" % out_folder) #todo. handle overwrite
+			sys.exit(2)'''
+
+		# creating HTML file
+		self.createHTML(mask,delta)
+		self.chopArtwork(artwork,delta)
+
+	def createHTML(self,mask,delta):
+		mask_size = mask.size
+		mask_data = [(delta[0],delta[1],self.triplet(color),slice,delta[0],delta[1]) for (slice,color) in enumerate(list(mask.getdata()))]
+		cells = ["\t\t<td width='%d' height='%d' style='background-color: #%s'><img src='images/slice_%d.jpg' width='%d' height='%d' border='0' style='display: block;' /></td>" % elem for elem in mask_data]
+		rows = [cells[i:i+mask_size[0]] for i in range(0, len(cells), mask_size[0])]
+		out = "<table border='0' cellspacing='0' cellpadding='0'>\n\t<tr>%s</tr>\n</table>" % ("\n\t</tr>\n\t<tr>\n".join(["\n".join(row) for row in rows]))
+		open("%s/%s" % (self.out_folder,"out.html"), "w").write(out)
+
+	def chopArtwork(self,artwork,delta):
+		print("hello chop")
+
+	def triplet(self,rgb):
+		return "".join(map(chr, rgb)).encode('hex')
 
 	def debug(self, message):
 		if not self.silent:
@@ -37,7 +73,7 @@ def main(argv):
 	parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0', help='output version information and exit')
 
 	args=parser.parse_args(argv)
-	Chop(mask_file_name=args.mask, artwork_file_name=args.artwork, out_folder=args.reverse, silent=args.silent)
+	Chop(mask_file_name=args.mask, artwork_file_name=args.artwork, out_folder=args.output, silent=args.silent)
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
