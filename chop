@@ -44,7 +44,7 @@ class Chop:
 
 		# creating HTML file
 		self.createHTML(mask,delta)
-		self.chopArtwork(artwork,delta)
+		self.chopArtwork(artwork,mask,delta)
 
 	def createHTML(self,mask,delta):
 		mask_size = mask.size
@@ -54,8 +54,8 @@ class Chop:
 		out = "<table border='0' cellspacing='0' cellpadding='0'>\n\t<tr>%s</tr>\n</table>" % ("\n\t</tr>\n\t<tr>\n".join(["\n".join(row) for row in rows]))
 		open("%s/%s" % (self.out_folder,"out.html"), "w").write(out)
 
-	def chopArtwork(self,artwork,delta):
-		print("hello chop")
+	def chopArtwork(self,artwork,mask,delta):
+		# bla bla bla
 
 	def triplet(self,rgb):
 		return "".join(map(chr, rgb)).encode('hex')
