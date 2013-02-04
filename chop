@@ -1,0 +1,43 @@
+#!/usr/bin/python
+import Image
+import os;
+
+class Chop:
+	def __init__(self, mask_file_name, artwork_file_name, out_folder, silent):
+		self.silent = silent
+
+		if mask_file_name and os.path.exists(mask_file):
+			self.debug('Reading mask')
+			mask = Image.open(mask_file)
+		else:
+			print("Please specify the mask")
+			sys.exit(2)
+
+		if artwork_file_name and os.path.exists(artwork_file_name):
+			self.debug('Reading artwork')
+			artwork = Image.open(artwork_file_name)
+		else:
+			print("Please specify the artwork")
+			sys.exit(2)
+
+		self.debug("Analysing the images")
+		mask_stats = ImageStat.stat(mask)
+		self.debug(mask_stats)
+
+	def debug(self, message):
+		if not self.silent:
+			print(message);
+
+def main(argv):
+	parser=argparse.ArgumentParser(description="Chops an image according to a mask and creates the HTML for a suitable smart imaged email")
+	parser.add_argument('-m', '--mask', help='the mask file', required=True)
+	parser.add_argument('-a', '--artwork', help='the artwork file', required=True)
+	parser.add_argument('-o', '--output', help='the output folder', default='out')
+	parser.add_argument('-s', '--silent', action='store_false', help='runs in silent mode')
+	parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0', help='output version information and exit')
+
+	args=parser.parse_args(argv)
+	Chop(mask_file_name=args.mask, artwork_file_name=args.artwork, out_folder=args.reverse, silent=args.silent)
+
+if __name__ == "__main__":
+	main(sys.argv[1:])
