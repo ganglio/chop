@@ -15,6 +15,7 @@ class Chop:
 		self.out_folder = out_folder
 		self.htmlfile = htmlfile
 
+		# check if the mask file exists
 		if mask_file_name and os.path.exists(mask_file_name):
 			self.debug('Reading mask')
 			mask = Image.open(mask_file_name).convert('RGB')
@@ -22,6 +23,7 @@ class Chop:
 			print("Please specify the mask")
 			sys.exit(2)
 
+		# check if the artwork file exists
 		if artwork_file_name and os.path.exists(artwork_file_name):
 			self.debug('Reading artwork')
 			artwork = Image.open(artwork_file_name)
@@ -62,7 +64,7 @@ class Chop:
 		mask_data = [(delta[0],delta[1],self.triplet(color),slice,delta[0],delta[1]) for (slice,color) in enumerate(list(mask.getdata()))]
 		cells = ["\t\t<td width='%d' height='%d' style='background-color: #%s'><img src='images/slice_%d.jpg' width='%d' height='%d' border='0' style='display: block;' /></td>" % elem for elem in mask_data]
 		rows = [cells[i:i+mask_size[0]] for i in range(0, len(cells), mask_size[0])]
-		out = "<table border='0' cellspacing='0' cellpadding='0'>\n\t<tr>%s</tr>\n</table>" % ("\n\t</tr>\n\t<tr>\n".join(["\n".join(row) for row in rows]))
+		out = "<table border='0' cellspacing='0' cellpadding='0'>\n\t<tr>%s\n\t</tr>\n</table>" % ("\n\t</tr>\n\t<tr>\n".join(["\n".join(row) for row in rows]))
 		open("%s/%s" % (self.out_folder,self.htmlfile), "w").write(out)
 
 	def chopArtwork(self,artwork,delta):
@@ -74,7 +76,7 @@ class Chop:
 				self.debug("Creating tile: %s" % fname)
 
 				buffer = Image.new("RGB", delta, (255, 255, 255))
-				tile = artwork.crop((x, y, delta[0], delta[1]))
+				tile = artwork.crop((x, y, x+delta[0], y+delta[1]))
 				buffer.paste(tile, (0, 0))
 				buffer.save(fname, "JPEG")
 
@@ -95,6 +97,7 @@ def main(argv):
 	parser.add_argument('-o', '--output', help='the HTML output file', default='index.html')
 	parser.add_argument('-s', '--silent', action='store_false', help='runs in silent mode')
 	parser.add_argument('-w', '--overwrite', action='store_false', help='overwrites out folder')
+	parser.add_argument('-r', '--rle', action='store_false', help='uses RLE encoding for a smaller number of images')
 	parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0', help='output version information and exit')
 
 	args=parser.parse_args(argv)
