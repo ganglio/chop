@@ -5,13 +5,15 @@ import os
 import sys
 import argparse
 import pprint
+import shutil
 
 pp = pprint.PrettyPrinter(indent=4)
 
 class Chop:
-	def __init__(self, mask_file_name, artwork_file_name, out_folder, silent):
+	def __init__(self, mask_file_name, artwork_file_name, out_folder, htmlfile, silent, overwrite):
 		self.silent = silent
 		self.out_folder = out_folder
+		self.htmlfile = htmlfile
 
 		if mask_file_name and os.path.exists(mask_file_name):
 			self.debug('Reading mask')
@@ -36,15 +38,24 @@ class Chop:
 			print("The artwork size must be an integer multiple of the mask size")
 			sys.exit(2)
 
+		delta = [int(t) for t in delta]
+
 		if not os.path.exists(out_folder):
+			self.debug("Creating \"%s\" folder" % out_folder)
 			os.mkdir(out_folder,0755)
-		'''else:
-			print("The folder \"%s\" already exists" % out_folder) #todo. handle overwrite
-			sys.exit(2)'''
+			os.mkdir(os.path.join(out_folder,"images"),0755)
+		elif overwrite:
+			self.debug("Overwriting \"%s\" folder" % out_folder)
+			shutil.rmtree(out_folder)
+			os.mkdir(out_folder,0755)
+			os.mkdir(os.path.join(out_folder,"images"),0755)
+		else:
+			self.debug("The folder \"%s\" already exists" % out_folder)
+			sys.exit(2)
 
 		# creating HTML file
 		self.createHTML(mask,delta)
-		self.chopArtwork(artwork,mask,delta)
+		self.chopArtwork(artwork,delta)
 
 	def createHTML(self,mask,delta):
 		mask_size = mask.size
@@ -52,28 +63,42 @@ class Chop:
 		cells = ["\t\t<td width='%d' height='%d' style='background-color: #%s'><img src='images/slice_%d.jpg' width='%d' height='%d' border='0' style='display: block;' /></td>" % elem for elem in mask_data]
 		rows = [cells[i:i+mask_size[0]] for i in range(0, len(cells), mask_size[0])]
 		out = "<table border='0' cellspacing='0' cellpadding='0'>\n\t<tr>%s</tr>\n</table>" % ("\n\t</tr>\n\t<tr>\n".join(["\n".join(row) for row in rows]))
-		open("%s/%s" % (self.out_folder,"out.html"), "w").write(out)
+		open("%s/%s" % (self.out_folder,self.htmlfile), "w").write(out)
 
-	def chopArtwork(self,artwork,mask,delta):
-		# bla bla bla
+	def chopArtwork(self,artwork,delta):
+		artwork_size = artwork.size
+		cnt=0;
+		for y in range(0, artwork_size[1], delta[1]):
+			for x in range(0, artwork_size[0], delta[0]):
+				fname = os.path.join(self.out_folder, "images", "slice_%d.jpg" % cnt)
+				self.debug("Creating tile: %s" % fname)
+
+				buffer = Image.new("RGB", delta, (255, 255, 255))
+				tile = artwork.crop((x, y, delta[0], delta[1]))
+				buffer.paste(tile, (0, 0))
+				buffer.save(fname, "JPEG")
+
+				cnt+=1
 
 	def triplet(self,rgb):
 		return "".join(map(chr, rgb)).encode('hex')
 
 	def debug(self, message):
-		if not self.silent:
+		if self.silent:
 			print(message);
 
 def main(argv):
 	parser=argparse.ArgumentParser(description="Chops an image according to a mask and creates the HTML for a suitable smart imaged email")
 	parser.add_argument('-m', '--mask', help='the mask file', required=True)
 	parser.add_argument('-a', '--artwork', help='the artwork file', required=True)
-	parser.add_argument('-o', '--output', help='the output folder', default='out')
+	parser.add_argument('-f', '--folder', help='the output older', default='out')
+	parser.add_argument('-o', '--output', help='the HTML output file', default='index.html')
 	parser.add_argument('-s', '--silent', action='store_false', help='runs in silent mode')
+	parser.add_argument('-w', '--overwrite', action='store_false', help='overwrites out folder')
 	parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0', help='output version information and exit')
 
 	args=parser.parse_args(argv)
-	Chop(mask_file_name=args.mask, artwork_file_name=args.artwork, out_folder=args.output, silent=args.silent)
+	Chop(mask_file_name=args.mask, artwork_file_name=args.artwork, out_folder=args.folder, htmlfile=args.output, silent=args.silent, overwrite=args.overwrite)
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
