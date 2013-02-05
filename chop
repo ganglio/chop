@@ -6,11 +6,12 @@ import sys
 import argparse
 import pprint
 import shutil
+from itertools import *
 
 pp = pprint.PrettyPrinter(indent=4)
 
 class Chop:
-	def __init__(self, mask_file_name, artwork_file_name, out_folder, htmlfile, silent, overwrite):
+	def __init__(self, mask_file_name, artwork_file_name, out_folder, htmlfile, silent, overwrite, rle):
 		self.silent = silent
 		self.out_folder = out_folder
 		self.htmlfile = htmlfile
@@ -56,8 +57,27 @@ class Chop:
 			sys.exit(2)
 
 		# creating HTML file
-		self.createHTML(mask,delta)
-		self.chopArtwork(artwork,delta)
+		if rle:
+			self.createHTML(mask,delta)
+			self.chopArtwork(artwork,delta)
+		else:
+			self.createHTMLRLE(mask,delta)
+			self.chopArtworkRLE(artwork,delta)
+
+	def createHTMLRLE(self,mask,delta):
+		mask_data = list(mask.getdata())
+		mask_rows = [mask_data[i:i+mask.size[0]] for i in range(0,len(mask_data),mask.size[0])]
+		mask_rle = [[(key,len(list(group))) for key,group in groupby(row)] for row in mask_rows]
+		mask_data = [[(run,delta[0]*run,delta[1],self.triplet(color),row+cell,delta[0]*run,delta[1]) for (cell,(color,run)) in enumerate(mask_rle_row)] for row,mask_rle_row in enumerate(mask_rle)]
+		cells = [["\t\t<td colspan='%d' style='width: %dpx; height: %dpx; background-color: #%s; border: none; line-height:0px; font-size: 0px;'><img src='images/slice_%d.jpg' style='width: %dpx; height: %dpx; display: block; border: none;' /></td>" % cell for cell in row] for row in mask_data]
+		rows = ["\n".join(row) for row in cells]
+		out = "<table width='%d' height='%d' border='0' cellspacing='0' cellpadding='0'>\n\t<tr width='%d' height='%d' style='line-height: 0px; font-size: 0px;'>%s\n\t</tr>\n</table>" % (mask.size[0]*delta[0],mask.size[1]*delta[1],mask.size[0]*delta[0],delta[1],("\n\t</tr>\n\t<tr width='%d' height='%d' style='line-height: 0px; font-size: 0px;'>\n" % (mask.size[0]*delta[0],delta[1])).join(rows))
+		out = "<html><body>\n%s\n</body></html>" % out
+		open("%s/%s" % (self.out_folder,self.htmlfile), "w").write(out)
+
+
+	def chopArtworkRLE(self,artwork,delta):
+		self.debug("Chopping RLE")
 
 	def createHTML(self,mask,delta):
 		mask_size = mask.size
@@ -101,7 +121,7 @@ def main(argv):
 	parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0', help='output version information and exit')
 
 	args=parser.parse_args(argv)
-	Chop(mask_file_name=args.mask, artwork_file_name=args.artwork, out_folder=args.folder, htmlfile=args.output, silent=args.silent, overwrite=args.overwrite)
+	Chop(mask_file_name=args.mask, artwork_file_name=args.artwork, out_folder=args.folder, htmlfile=args.output, silent=args.silent, overwrite=args.overwrite, rle=args.rle)
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
